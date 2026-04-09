@@ -12,25 +12,19 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer, PorterStemmer
 from nltk.tag import pos_tag
-from nltk.chunk import ne_chunk
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import warnings
 warnings.filterwarnings("ignore")
 
-# Download required NLTK data
-def download_nltk_data():
-    resources = [
-        'punkt', 'stopwords', 'wordnet', 'averaged_perceptron_tagger',
-        'maxent_ne_chunker', 'words', 'punkt_tab', 'averaged_perceptron_tagger_eng'
-    ]
-    for r in resources:
-        try:
-            nltk.download(r, quiet=True)
-        except Exception:
-            pass
-
-download_nltk_data()
+# Avoid downloading NLTK assets at import time. Streamlit Cloud can block or
+# slow network-dependent startup, and the app already has graceful fallbacks.
+def _nltk_resource_available(resource_path: str) -> bool:
+    try:
+        nltk.data.find(resource_path)
+        return True
+    except LookupError:
+        return False
 
 lemmatizer = WordNetLemmatizer()
 stemmer = PorterStemmer()
@@ -80,7 +74,9 @@ def safe_sent_tokenize(text: str) -> list:
 
 def safe_lemmatize(word: str) -> str:
     try:
-        return lemmatizer.lemmatize(word)
+        if _nltk_resource_available("corpora/wordnet"):
+            return lemmatizer.lemmatize(word)
+        return word
     except Exception:
         return word
 
